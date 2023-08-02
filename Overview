@@ -1,0 +1,56 @@
+Snapping Streamflow Catalog Gages to Streamlines and Assessing Location Errors
+This is a workflow designed to assess geolocation errors for streamflow gages and snap gages to NHD streamlines to generate an accurate latitude and longitude for each gage. This process can be done both manually in ArcGIS or through R studio. In overview, the location data is projected on an ArcGIS map along with NHD flowlines and flow accumulations to mimic streams. The points are evaluated based on their distance from these flowlines and are either snapped to nearest flowline and lat/lon is updated OR flagged for manual moving where they are further than a buffer distance or there is uncertainty in which flowline to snap to. 
+Steven Schmitz 7.12.23
+
+MANUAL PROCESS
+Download the data on HUC4 NHD flowlines, flow accumulations, and watersheds from the medium resolution NHD (Get NHDPlus (National Hydrography Dataset Plus) Data | US EPA) or NHDPlusHR (The National Map (prd-tnm.s3.amazonaws.com). The R code is designed to work with the medium resolution data - some edits will be needed to use HD data. 
+
+Project all data in the same projection (NAD 1983 Albers Equal Area--the projection for the medium resolution NHD). The medium resolution data are included in the FPO.7z zip file in the share drive.
+**NOTE: There is uncertainty that the medium resolution data is accurate with USGS Gage lat/lon. There are currently several hundred gages that do not fall along streamlines in medium resolution. The gages are being checked with HD NHD resolution streamflines.**
+
+Classify the flow accumulation grids as streams--cells greater than a threshold value (100 cells). Use the flow accumulation tool in ArcGIS pro. These layers are also included in the FPO.7z file in the share drive.
+
+Convert the stream grids to points for snapping. You will use the Raster to Point (Conversion Tool) to perform this operation.
+
+Clip the observations by the watersheds for quicker, easier processing. Depending on the processing power of your machine/cluster, it is necessary to do these processes one watershed at a time. This is a mandatory step, especially if using the HD NHD data. The file size of the streamlines that encompass the entire streamflow catalog is approximately 100 GB. 
+
+Snap the observations to the stream points using the snap editor. These gage points will be snapped to the nearest streamflow line.
+
+Also, snap the observations to the flowlines to acquire NHD information for assessing potential snapping errors.
+
+Extract the flow accumulation values in a buffer (50 meters) around the observations for assessing potential snapping errors.
+
+Assess potential snapping errors in four ways (decreasing in importance):
+Obtain observations with an accumulation value less than half, etc., the maximum or greater than double, etc., the minimum within a buffer (50 meters) around the observation.
+Obtain observations with the nearest stream distance farther than a buffer (100 meters) around the observation.
+Obtain observations with the beginning (first 3 characters) of the site name not equivalent to the nearest flowline.
+Obtain observations with an accumulation value less than half the median or greater than double the median for all observations with the same site name.
+
+
+PROCESS VIA R
+R scripts hosted in …/NHDsnapping/R/
+
+
+All of this process is contained within a targets pipeline in R, which tracks changes in files that are used in the scripts and tracks changes in the code, so only objects in the pipeline that are affected by changes will be rerun. If you decide to use the NHDPlusHR data, you would just need to change some of the coding in the "_targets.R" file, which I could explain later; then, you would just run the "run.R" file to update the targets pipeline.
+**NOTE: Currently working with Ryan to decide on code edits to incorporate NHDPlusHR data. Current code is written to only operate with medium resolution.**
+
+
+In the share drive is a zipped archive that has all the files and folders needed for snapping your observations in the targets pipeline (In Share Drive => FPO.7z). The results folder has the files on interest, which are also attached separately. The CSV has the assessed snapping errors. The last four columns prefixed with "err_" in that file correspond to 9.a.-9.d. above. The three columns prefixed with "fac_" refer to the flow accumulation values of the stream cell that the observation was snapped to and the max and min values within the buffer around the observation (these columns are used in 9.a. above). The column "nearest_stream_distance" is how far away the observation was to the nearest stream cell that it was snapped to (this column is used in 9.b. above). The column "nearest_flowline_distance" is how far away the observation was from the nearest flowline (this column and the column "nearest_line_id" are used in 9.c. above). One shapefile has the observations snapped to the stream grid (classified from the flow accumulations); this shapefile should be used to assess which potential snapping errors are real and to manually adjust the location of those observations on the stream grid (using ArcGIS or some other point-and-click GIS software). The other shapefile has the observations snapped to the NHD flowlines; this shapefile should be used just to assist with the manual adjustments of observations in the other shapefile.
+
+List of R Files:
+
+assess_snapping_errors.R
+classify_grid.R
+clip_point_polygon.R
+convert_grid_point.R
+define_flat_file.R
+define_grid.R
+extract_grid_point.R
+my_snapPointsToLines.R
+project_grid.R
+project_shapefile.R
+snap_point_line.R
+snap_point_point.R
+write_projected_shapefile.R
+write_snapped_shapefile.R
+write_snapping_errors_flate_file.R
